@@ -1,0 +1,11 @@
+{
+  "name": "com.guru.unity.gamebox",
+  "displayName": "GameBox",
+  "version": "0.6.0",
+  "description": "game box lite version for unity team",
+  "unity": "2020.3",
+  "license": "MIT",
+  "category": "Game tool",
+  "dependencies": {
+  }
+}
