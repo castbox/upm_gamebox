@@ -1,5 +1,5 @@
 {
-    "name": "GameBox",
+    "name": "GameBox.Runtime",
     "rootNamespace": "GameBox",
     "references": [
         "DOTween.Modules"

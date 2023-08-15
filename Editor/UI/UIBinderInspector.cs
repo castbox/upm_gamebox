@@ -5,13 +5,14 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using GameBox;
 
 namespace GameBox
 {
     /// <summary>
     /// UIBinder 功能扩展
     /// </summary>
-    [CustomEditor(typeof(UIBinder))]
+    [CustomEditor(typeof(GameBox.UIBinder))]
     public class UIBinderInspector: UnityEditor.Editor
     {
         public enum ImportScope
