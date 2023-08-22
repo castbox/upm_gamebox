@@ -30,7 +30,14 @@ namespace GameBox
             }
         }
 
-        
+        private string _bundleSecret = ""; // 加密秘钥
+
+        public string BundleSecret
+        {
+            get => _bundleSecret;
+            set => _bundleSecret = value;
+        }
+
         #region 加载接口
         
         /// <summary>
@@ -72,11 +79,11 @@ namespace GameBox
         /// </summary>
         /// <param name="bundleName"></param>
         /// <returns></returns>
-        protected virtual AssetBundle LoadStreamingBundle(string bundleName)
+        protected virtual AssetBundle LoadStreamingBundle(string bundleName, string secret = "")
         {
             string filePath = $"{Application.streamingAssetsPath}/{BundleDirPath}/{bundleName}";
             LogD($"Load streaming bundles: {filePath}");
-            return TryLoadBundle(filePath, bundleName);
+            return TryLoadBundleFromPath(filePath, secret);
         }
 
         /// <summary>
@@ -84,12 +91,12 @@ namespace GameBox
         /// </summary>
         /// <param name="bundleName"></param>
         /// <returns></returns>
-        protected virtual AssetBundle LoadSavedBundle(string bundleName)
+        protected virtual AssetBundle LoadSavedBundle(string bundleName, string secret = "")
         {
             string filePath = $"{Application.persistentDataPath}/{BundleDirPath}/{bundleName}";
             if (!File.Exists(filePath)) return null;
             LogD($"Load saved bundles: {filePath}");
-            return TryLoadBundle(filePath, bundleName);
+            return TryLoadBundleFromPath(filePath, secret);
         }
 
         /// <summary>
@@ -101,8 +108,8 @@ namespace GameBox
         public virtual AssetBundle LoadBundle(string bundleName, bool forceStreaming = false)
         {
             AssetBundle ab = null;
-            if(!forceStreaming) ab = LoadSavedBundle(bundleName); // 优先加载下载好的Bundle
-            if (null == ab) ab = LoadStreamingBundle(bundleName); // 再加载包内缓存的Bundle
+            if(!forceStreaming) ab = LoadSavedBundle(bundleName, _bundleSecret); // 优先加载下载好的Bundle
+            if (null == ab) ab = LoadStreamingBundle(bundleName, _bundleSecret); // 再加载包内缓存的Bundle
             return ab;
         }
 
@@ -112,11 +119,21 @@ namespace GameBox
         /// </summary>
         /// <param name="filePath"></param>
         /// <param name="bundleName"></param>
+        /// <param name="secret">bundle加密秘钥</param>
         /// <returns></returns>
-        protected virtual AssetBundle TryLoadBundle(string filePath, string bundleName = "")
+        protected virtual AssetBundle TryLoadBundleFromPath(string filePath, string secret = "")
         {
             if(string.IsNullOrEmpty(filePath)) return null;
-            return AssetBundle.LoadFromFile(filePath);
+            if (string.IsNullOrEmpty(secret)) return AssetBundle.LoadFromFile(filePath); // 无加密则直接加载Bundle
+            try
+            {
+                return Encrypter.LoadEncyptBundle(filePath, secret); //  加载加密的 bundle 
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"-- Load EncyptBundle fail: {filePath}");
+            }
+            return null;
         }
 
 

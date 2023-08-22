@@ -59,14 +59,17 @@ namespace GameBox
         protected override void Init()
         {
             _loader = new ResLoaderBase();
-// #if UNITY_EDITOR
-//             _loader.ShowLog = true;
-// #endif
         }
 
+        /// <summary>
+        /// 设置加载器秘钥
+        /// </summary>
+        /// <param name="secret"></param>
+        public void SetBundleSecret(string secret) => _loader.BundleSecret = secret;
+
+
         #endregion
-
-
+        
         #region 预加载资源
 
         /// <summary>
@@ -85,7 +88,7 @@ namespace GameBox
         /// 实时加载Bundle
         /// </summary>
         /// <param name="bundleName"></param>
-        public AssetBundle PreLoadBundle(string bundleName)
+        public AssetBundle PreLoadBundle(string bundleName, string secret = "")
         {
             var ab = _loader.LoadBundle(bundleName);
             if (null != ab) Bundles[bundleName] = ab;
@@ -151,8 +154,7 @@ namespace GameBox
         }
 
         #endregion
-
-       
+        
         #region 资源引用
         
         /// <summary>
@@ -162,7 +164,7 @@ namespace GameBox
         /// <param name="bundleName"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public T LoadAsset<T>(string assetName, string bundleName = "") where T : Object
+        public T LoadAsset<T>(string assetName, string bundleName = "", string secret = "") where T : Object
         {
             // Debug.Log($"<color=cyan> SimulationMode: {SimulationMode}  </color>");
             
