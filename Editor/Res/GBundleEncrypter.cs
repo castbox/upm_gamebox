@@ -36,7 +36,7 @@ namespace GameBox
             {
                 if (string.IsNullOrEmpty(f.Extension))
                 {
-                    Encrypter.DecryptBundle(f.FullName, secret, $"{to}/{f.Name}");
+                    Encrypter.EncryptBundle(f.FullName, secret, $"{to}/{f.Name}");
                 }
             }
             OpenPath(to);
@@ -51,7 +51,7 @@ namespace GameBox
             {
                 if (string.IsNullOrEmpty(f.Extension))
                 {
-                    Encrypter.EncryptBundle(f.FullName, secret, $"{to}/{f.Name}");
+                    Encrypter.DecryptBundle(f.FullName, secret, $"{to}/{f.Name}");
                 }
             }
             
