@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using UnityEngine;
 using UnityEngine.U2D;
 using Object = UnityEngine.Object;
@@ -88,7 +87,7 @@ namespace GameBox
         /// 实时加载Bundle
         /// </summary>
         /// <param name="bundleName"></param>
-        public AssetBundle PreLoadBundle(string bundleName, string secret = "")
+        public AssetBundle PreLoadBundle(string bundleName)
         {
             var ab = _loader.LoadBundle(bundleName);
             if (null != ab) Bundles[bundleName] = ab;
@@ -100,12 +99,79 @@ namespace GameBox
         /// </summary>
         /// <param name="bundleName"></param>
         /// <returns></returns>
-        public bool HasBundle(string bundleName)
+        public bool IsBundleExsited(string bundleName)
         {
             return Bundles.ContainsKey(bundleName);
         }
 
+
+     
+
+
+
+
         #endregion
+
+        #region 资源预加载
+
+
+
+        private Action _preloadCompleteHandle;
+        private Action<float> _preloadProgressHandle;
+        private int _preloadCount;
+        private int _preloadIdx;
+        private List<string> _preloadList;
+
+        /// <summary>
+        /// 预加载嵌入式的Bundle
+        /// </summary>
+        /// <param name="bundles"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="onProgress"></param>
+        public void PreloadEmbedBundles(List<string> bundles, Action onComplete, Action<float> onProgress = null)
+        {
+            _preloadCompleteHandle = onComplete;
+            _preloadProgressHandle = onProgress;
+            _preloadIdx = 0;
+            _preloadCount = bundles.Count;
+            _preloadList = bundles;
+            LoadNextBundle();
+        }
+
+        private void LoadNextBundle()
+        {
+
+            if (_preloadIdx >= _preloadCount)
+            {
+                // 全部加载完毕
+                _preloadCompleteHandle?.Invoke();
+                return;
+            }
+
+            string platform = "android";
+#if UNITY_IOS
+            platform = "ios";
+#endif
+            string bundleName = _preloadList[_preloadIdx];
+            string url = $"{Application.streamingAssetsPath}/assetbundles/{platform}/{bundleName}";
+#if UNITY_EDITOR
+            url = $"file://{url}";
+#endif
+            _loader.LoadBundleAsync(url, (bundle, s) =>
+            {
+                if (bundle != null)
+                {
+                    Bundles[bundleName] = bundle;
+                    _preloadIdx++;
+                    _preloadProgressHandle?.Invoke((float)_preloadIdx/_preloadCount); // 上报进度
+                }
+                LoadNextBundle();
+            });
+        }
+
+        #endregion
+        
+        
 
         #region 资源管理
 
@@ -119,7 +185,7 @@ namespace GameBox
             }
             else
             {
-                Debug.Log($"Can't load bundle: {bundleName}...");
+                Debug.Log($"Bundle: {bundleName} not in cache...");
             }
             return ab;
         }
@@ -164,7 +230,7 @@ namespace GameBox
         /// <param name="bundleName"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public T LoadAsset<T>(string assetName, string bundleName = "", string secret = "") where T : Object
+        public T LoadAsset<T>(string assetName, string bundleName = "") where T : Object
         {
             // Debug.Log($"<color=cyan> SimulationMode: {SimulationMode}  </color>");
             
@@ -172,20 +238,30 @@ namespace GameBox
             
             if (string.IsNullOrEmpty(bundleName))
             {
+                Debug.Log($"{Tag} ---- Bundle load from resources {bundleName}...");
                 return _loader.Load<T>(assetName); // 资源加载
             }
 
+            // var ab = GetBundle(bundleName);
+            // bool isNew = false;
+            // if (null == ab)
+            // {
+            //     Debug.Log($"{Tag} ---- #1 Bundle not in Cache, load new bundle {bundleName}...");
+            //     ab = _loader.LoadBundle(bundleName);
+            //     isNew = true;
+            // }
+            //
+            // if (ab != null)
+            // {
+            //     Debug.Log($"{Tag} ---- #2 bundle loaded: {bundleName}...");
+            //     if(isNew) Bundles[bundleName] = ab;
+            //     return ab.LoadAsset<T>(assetName);
+            // }
+            
             var ab = GetBundle(bundleName);
-            bool isNew = false;
-            if (null == ab)
+            if (null != ab)
             {
-                ab = _loader.LoadBundle(bundleName);
-                isNew = true;
-            }
-
-            if (ab != null)
-            {
-                if(isNew) Bundles[bundleName] = ab;
+                // Debug.Log($"{Tag} bundle is exists: {bundleName}...");
                 return ab.LoadAsset<T>(assetName);
             }
 
