@@ -146,7 +146,7 @@ namespace GameBox
         {
             if (_clips.ContainsKey(name)) return _clips[name];
             
-            if (!string.IsNullOrEmpty(bundleName) && !Res.IsBundleExsited(bundleName))
+            if (!string.IsNullOrEmpty(bundleName) && !Res.HasBundle(bundleName))
             {
                 PreLoadBundle(bundleName);
             }

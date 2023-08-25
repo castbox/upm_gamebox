@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using UnityEngine.Networking;
 using Object = UnityEngine.Object;
 
 namespace GameBox
@@ -128,65 +127,13 @@ namespace GameBox
             if (string.IsNullOrEmpty(secret)) return AssetBundle.LoadFromFile(filePath); // 无加密则直接加载Bundle
             try
             {
-                byte[] data = File.ReadAllBytes(filePath);
-                return Encrypter.DecryptBundle(data, secret); //  加载加密的 bundle 
+                return Encrypter.LoadEncyptBundle(filePath, secret); //  加载加密的 bundle 
             }
             catch (Exception e)
             {
-                Debug.LogError($"-- [LoaderBase] Load EncyptBundle fail: {filePath} :: {e}");
+                Debug.LogError($"-- Load EncyptBundle fail: {filePath}");
             }
             return null;
-        }
-
-
-
-        #endregion
-
-        #region 异步加载
-
-        /// <summary>
-        /// 异步加载Bundle
-        /// </summary>
-        /// <param name="url"></param>
-        /// <param name="callback"></param>
-        public void LoadBundleAsync(string url, Action<AssetBundle, string> callback)
-        {
-            UnityWebRequest w = UnityWebRequest.Get(url);
-            w.downloadHandler = new DownloadHandlerBuffer();
-            w.SendWebRequest().completed += ao =>
-            {
-                if (w.result == UnityWebRequest.Result.Success)
-                {
-                    AssetBundle bundle = null;
-                    byte[] data = w.downloadHandler.data;
-                    if (data != null)
-                    {
-                        Debug.Log($"Data is loaded: {url}");
-                        try
-                        {
-                            if (string.IsNullOrEmpty(_bundleSecret))
-                            {
-                                bundle = AssetBundle.LoadFromMemory(data);
-                            }
-                            else
-                            {
-                                Debug.Log($"start load enc bundle: {_bundleSecret}");
-                                bundle = Encrypter.DecryptBundle(data, _bundleSecret);
-                            }
-                            callback?.Invoke(bundle, url);
-                            return;
-                        }
-                        catch (Exception e)
-                        {
-                            Debug.LogError($"Creat Bundle error: {e}");
-                        }
-                    }
-                }
-                
-                Debug.LogError($"Load Bundle error: {url}");
-                Debug.LogError($"{w.error}");
-                callback?.Invoke(null, url);
-            };
         }
 
 

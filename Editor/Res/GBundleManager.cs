@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -11,24 +10,6 @@ namespace GameBox
 {
     public class GBundleManager
     {
-
-        #region 通用方法
-
-        private static void OpenPath(string path)
-        {
-            
-#if UNITY_EDITOR_OSX
-            EditorUtility.RevealInFinder(path);
-#else
-            Application.OpenURL($"file://{path}");
-#endif
-        }
-
-        #endregion
-        
-
-        #region 正常构建所有包体
-
         
         [MenuItem("GameBox/Bundle/Build All Bundles")]
         public static void BuildAllBundles()
@@ -80,82 +61,7 @@ namespace GameBox
         
         [MenuItem(TITLE_SIMULATION_OFF)]
         public static void SetSimulateModeOff() => SimulationMode = false;
-        
-        #endregion
 
-
-        #region 加密接口
-        
-        /// <summary>
-        /// 加密所有BUndle
-        /// </summary>
-        /// <param name="secret"></param>
-        /// <param name="from"></param>
-        /// <param name="to"></param>
-        public static void EncryptAllBundlesInPath(string secret, string from, string to = "")
-        {
-            if (string.IsNullOrEmpty(to)) to = from; // 直接覆盖原始的文件
-            var dirInfo = new DirectoryInfo(from);
-            byte[] data = null;
-            foreach (var f in dirInfo.GetFiles())
-            {
-                if (string.IsNullOrEmpty(f.Extension))
-                {
-                    Encrypter.EditorEncryptXOR(f.FullName, secret, $"{to}/{f.Name}");
-                }
-            }
-            OpenPath(to);
-        }
-        
-        /// <summary>
-        /// 还原所有Bundle
-        /// </summary>
-        /// <param name="secret"></param>
-        /// <param name="from"></param>
-        /// <param name="to"></param>
-        public static void DecryptAllBundlesInPath(string secret, string from, string to = "")
-        {
-            if (string.IsNullOrEmpty(to)) to = from; // 直接覆盖原始的文件
-            var dirInfo = new DirectoryInfo(from);
-            foreach (var f in dirInfo.GetFiles())
-            {
-                if (string.IsNullOrEmpty(f.Extension))
-                {
-                    Encrypter.EditorDecryptXOR(f.FullName, secret, $"{to}/{f.Name}");
-                }
-            }
-            
-            OpenPath(to);
-            
-        }
-        
-        #endregion
-
-        #region 单元测试
-
-        private static readonly string test_secret = "enc_test_key";
-        
-        [Test]
-        public static void TEST__EncryptAllBundles()
-        {
-            string from = $"{Application.dataPath}/../AssetBundles/Android";
-            string to = $"{Application.streamingAssetsPath}/assetbundles/android";
-
-            Debug.Log($" in:{from} -> out:{to}");
-            EncryptAllBundlesInPath(test_secret, from, to);
-        }
-        
-        [Test]
-        public static void TEST__DecryptAllBundles()
-        {
-            string from = $"{Application.streamingAssetsPath}/assetbundles/android";
-            DecryptAllBundlesInPath(test_secret, from);
-        }
-
-        
-        
-
-        #endregion
 
     }
 
@@ -183,7 +89,6 @@ namespace GameBox
         {
             if (!Directory.Exists(path)) Directory.CreateDirectory(path);
         }
-        
 
         /// <summary>
         /// 查找所有的目标组
@@ -315,7 +220,7 @@ namespace GameBox
             // 如果是本地包
             if (isLocalBundle)
             {
-                string localDir = $"{Application.streamingAssetsPath}/AssetBundles/{buildTarget.ToString()}".ToLower();
+                string localDir = $"{Application.streamingAssetsPath}/AssetBundles/{buildTarget.ToString()}";
                 EnsurePathExist(localDir);
                 string from, to;
                 foreach (var bundle in gbm.bundles)
