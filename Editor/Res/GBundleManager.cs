@@ -92,7 +92,7 @@ namespace GameBox
         /// <param name="secret"></param>
         /// <param name="from"></param>
         /// <param name="to"></param>
-        public static void EncryptAllBundlesInPath(string secret, string from, string to = "")
+        public static void EncryptAllBundlesInPath(string secret, string from, string to = "", bool isOffset = true)
         {
             if (string.IsNullOrEmpty(to)) to = from; // 直接覆盖原始的文件
             var dirInfo = new DirectoryInfo(from);
@@ -101,7 +101,16 @@ namespace GameBox
             {
                 if (string.IsNullOrEmpty(f.Extension))
                 {
-                    Encrypter.EditorEncryptXOR(f.FullName, secret, $"{to}/{f.Name}");
+                    if (isOffset)
+                    {
+                        Encrypter.EncryptOffset(f.FullName, secret, $"{to}/{f.Name}");
+                    }
+                    else
+                    {
+                        Encrypter.EncryptXOR(f.FullName, secret, $"{to}/{f.Name}");
+                    }
+
+                    
                 }
             }
             OpenPath(to);
@@ -113,7 +122,7 @@ namespace GameBox
         /// <param name="secret"></param>
         /// <param name="from"></param>
         /// <param name="to"></param>
-        public static void DecryptAllBundlesInPath(string secret, string from, string to = "")
+        public static void DecryptAllBundlesInPath(string secret, string from, string to = "", bool isOffset = true)
         {
             if (string.IsNullOrEmpty(to)) to = from; // 直接覆盖原始的文件
             var dirInfo = new DirectoryInfo(from);
@@ -121,7 +130,14 @@ namespace GameBox
             {
                 if (string.IsNullOrEmpty(f.Extension))
                 {
-                    Encrypter.EditorDecryptXOR(f.FullName, secret, $"{to}/{f.Name}");
+                    if (isOffset)
+                    {
+                        Encrypter.DecryptOffset(f.FullName, secret, $"{to}/{f.Name}");
+                    }
+                    else
+                    {
+                        Encrypter.DecryptXOR(f.FullName, secret, $"{to}/{f.Name}");
+                    }
                 }
             }
             

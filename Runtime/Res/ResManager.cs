@@ -154,7 +154,7 @@ namespace GameBox
 #endif
             string bundleName = _preloadList[_preloadIdx];
             string url = $"{Application.streamingAssetsPath}/assetbundles/{platform}/{bundleName}";
-#if UNITY_EDITOR
+#if UNITY_EDITOR || UNITY_IOS
             url = $"file://{url}";
 #endif
             _loader.LoadBundleAsync(url, (bundle, s) =>
