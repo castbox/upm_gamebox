@@ -1,5 +1,5 @@
 artifacts/**
 build/**
-Documentation/ApiDocs/**
+Documentations/**
 .DS_Store
 .npmrc
