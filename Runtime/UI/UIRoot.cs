@@ -1,4 +1,3 @@
-
 namespace GameBox
 {
     using UnityEngine;
@@ -6,14 +5,14 @@ namespace GameBox
     using UnityEngine.EventSystems;
     using System;
     using Object = UnityEngine.Object;
-    
+
     public static class UIUtils
     {
         public static void AddToParent(this GameObject go, Transform parent)
         {
             go.transform.AddToParent(parent);
         }
-        
+
         public static void AddToParent(this Transform trans, Transform parent)
         {
             var scale = trans.localScale;
@@ -22,35 +21,35 @@ namespace GameBox
             trans.localPosition = Vector3.zero;
         }
     }
-    
+
     /// <summary>
     /// UIRoot 节点
     /// </summary>
-    public class UIRoot: MonoBehaviour
+    public class UIRoot : MonoBehaviour
     {
-        
+
         #region 属性定义
 
         private static readonly string InternalNodeName = "[ESSENTIAL]";
         public static readonly int DesignScreenWidth = 1080;
         public static readonly int DesignScreenHeight = 1920;
-        
+
         [SerializeField] private Canvas _rootCanvas;
         [SerializeField] private RectTransform _essentialNode;
         [SerializeField] private RectTransform _root;
         [SerializeField] private CanvasScaler _rootScaler;
         [SerializeField] private Camera _camera;
-        
+
         public Camera Camera => _camera;
         private int _uiLayerId;
 
         public CanvasScaler Scaler => _rootScaler;
-        
+
 
         #endregion
-        
+
         #region 生命周期
-        
+
         /// <summary>
         /// 生成整个UIRoot
         /// </summary>
@@ -58,12 +57,12 @@ namespace GameBox
         {
             gameObject.name = nameof(UIRoot);
             _uiLayerId = LayerMask.NameToLayer("UI"); // UILayer的ID
-            
+
             InitEventSystem();
             InitCamera();
             InitCanvas();
         }
-        
+
         /// <summary>
         /// 初始化根节点Canvas
         /// </summary>
@@ -72,7 +71,7 @@ namespace GameBox
             _rootCanvas = gameObject.AddComponent<Canvas>();
             _rootCanvas.renderMode = RenderMode.ScreenSpaceCamera;
             _rootCanvas.worldCamera = Camera;
-            
+
             _rootScaler = gameObject.AddComponent<CanvasScaler>();
             _rootScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             _rootScaler.referenceResolution = new Vector2(DesignScreenWidth, DesignScreenHeight);
@@ -134,6 +133,9 @@ namespace GameBox
             var go = Instantiate(Resources.Load<GameObject>("ui_root"));
             var comp = go.GetComponent<UIRoot>();
             if (null == comp) comp = go.AddComponent<UIRoot>();
+            ScreenFitter fitter = new ScreenFitter();
+            fitter.Init(comp.transform as RectTransform);
+
             return comp;
         }
 
@@ -147,7 +149,7 @@ namespace GameBox
             if (go != null) return go.GetComponent<RectTransform>();
             return null;
         }
-        
+
         public GameObject CreateChild(string childPath, Transform parent = null)
         {
             if (null == parent)
@@ -186,12 +188,12 @@ namespace GameBox
             GameObject child = CreateChild(childPath, parent);
             return child.AddComponent<T>();
         }
-        
+
         public static RectTransform BindRectTransform(GameObject go)
         {
             if (!go.TryGetComponent<RectTransform>(out var rect))
                 rect = go.AddComponent<RectTransform>();
-            
+
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
@@ -202,7 +204,7 @@ namespace GameBox
         }
 
         #endregion
-        
+
     }
-    
+
 }

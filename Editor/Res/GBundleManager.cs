@@ -26,6 +26,7 @@ namespace GameBox
 
         #endregion
         
+
         #region 正常构建所有包体
 
         
@@ -81,7 +82,8 @@ namespace GameBox
         public static void SetSimulateModeOff() => SimulationMode = false;
         
         #endregion
-        
+
+
         #region 加密接口
         
         /// <summary>
@@ -172,8 +174,9 @@ namespace GameBox
         #endregion
 
     }
-    
-    
+
+
+
     /// <summary>
     /// 创建Bundle的API
     /// </summary>
@@ -181,6 +184,7 @@ namespace GameBox
     {
         public const string Version = "0.0.1";
         
+
         /// <summary>
         /// 获取资源路径
         /// </summary>
@@ -196,6 +200,7 @@ namespace GameBox
             if (!Directory.Exists(path)) Directory.CreateDirectory(path);
         }
         
+
         /// <summary>
         /// 查找所有的目标组
         /// </summary>
@@ -306,7 +311,7 @@ namespace GameBox
             
             ApplyManifest(gbm);
             
-            var outputRoot = $"{Application.dataPath}/../AssetBundles";
+            var outputRoot = $"{Application.dataPath}/../assetbundles";
             var buildPath = $"{outputRoot}/{buildTarget.ToString()}";
 
             EnsurePathExist(buildPath);
@@ -326,7 +331,7 @@ namespace GameBox
             // 如果是本地包
             if (isLocalBundle)
             {
-                string localDir = $"{Application.streamingAssetsPath}/AssetBundles/{buildTarget.ToString()}".ToLower();
+                string localDir = $"{Application.streamingAssetsPath}/assetbundles/{buildTarget.ToString()}".ToLower();
                 EnsurePathExist(localDir);
                 string from, to;
                 foreach (var bundle in gbm.bundles)
