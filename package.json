@@ -4,8 +4,11 @@
   "version": "0.6.0",
   "description": "game box lite version for unity team",
   "unity": "2020.3",
+  "author":{
+    "name": "Guru Fungames Studio"
+  },
   "license": "MIT",
-  "category": "Game tool",
+  "category": ["Game","tool"],
   "dependencies": {
   }
 }
