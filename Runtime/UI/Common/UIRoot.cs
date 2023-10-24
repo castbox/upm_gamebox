@@ -38,6 +38,7 @@ namespace GameBox
         [SerializeField] private Canvas _rootCanvas;
         [SerializeField] private RectTransform _essentialNode;
         [SerializeField] private RectTransform _root;
+        [SerializeField] private Image _globalBackground; 
         [SerializeField] private CanvasScaler _rootScaler;
         [SerializeField] private Camera _camera;
         
@@ -120,9 +121,7 @@ namespace GameBox
         /// <exception cref="NotImplementedException"></exception>
         private void Awake()
         {
-            name = nameof(UIRoot);
-            // DontDestroyOnLoad(gameObject);
-            InitEventSystem();
+            Init();
         }
 
         private void Start()
@@ -141,6 +140,38 @@ namespace GameBox
             if (null == comp) comp = go.AddComponent<UIRoot>();
             return comp;
         }
+
+
+        private void Init()
+        {
+            name = nameof(UIRoot);
+            GlobalBackgroundActive = false;
+            InitEventSystem();
+        }
+
+        #endregion
+
+        #region 全屏背景
+
+        /// <summary>
+        /// 全局背景显示开关
+        /// </summary>
+        public bool GlobalBackgroundActive
+        {
+            get => _globalBackground.gameObject.activeSelf;
+            set => _globalBackground.gameObject.SetActive(value);
+        }
+
+        /// <summary>
+        /// 设置全局背景图片
+        /// </summary>
+        /// <param name="sprite"></param>
+        public void SetGlobalBackground(Sprite sprite)
+        {
+            if (!GlobalBackgroundActive) GlobalBackgroundActive = true;
+            _globalBackground.sprite = sprite;
+        }
+
 
         #endregion
         
