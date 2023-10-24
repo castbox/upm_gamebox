@@ -10,6 +10,7 @@
   "license": "MIT",
   "category": ["Game","tool"],
   "dependencies": {
-     "com.unity.device-simulator": "3.1.0-preview"
+    "com.coffee.upm-git-extension": "https://github.com/mob-sakai/UpmGitExtension.git#main",
+    "com.unity.device-simulator": "3.1.0-preview"
   }
 }
