@@ -1,7 +1,7 @@
 {
   "name": "com.guru.unity.gamebox",
   "displayName": "GameBox",
-  "version": "0.0.3",
+  "version": "0.0.3-preview",
   "description": "game box lite version for unity team",
   "unity": "2020.3",
   "author":{
