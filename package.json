@@ -13,6 +13,6 @@
     "com.coffee.upm-git-extension": "https://github.com/mob-sakai/UpmGitExtension.git#main",
     "com.unity.device-simulator": "3.1.0-preview",
     "com.unity.assetbundlebrowser": "https://github.com/Unity-Technologies/AssetBundles-Browser.git",
-    "com.guru.unity.3rd.tools": "https://github.com/castbox/upm_3rd_tools.git"
+    "com.guru.unity.3rd.tools": "https://github.com/castbox/upm_3rd_tools.git#0.0.1"
   }
 }
