@@ -173,13 +173,20 @@ namespace GameBox
             
             string bundleName = _loadBundleQuests[_bundleLoadIdx].name;
             string url = _loadBundleQuests[_bundleLoadIdx].url;
-            _loader.LoadBundleAsync(url, (bundle, s) =>
+            LoadBundleAsync(url, (bundle, s) =>
             {
                 if (bundle != null)
                 {
                     Bundles[bundleName] = bundle;
                     _bundleLoadIdx++;
                     _bundleLoadProgressHandle?.Invoke((float)_bundleLoadIdx/_bundleLoadCount); // 上报进度
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(s))
+                    {
+                        Debug.LogError($"{Tag} Load bundle failed: {s}");
+                    }
                 }
                 LoadNextBundle();
             });
@@ -282,6 +289,28 @@ namespace GameBox
             // 调用接口
             LoadBundlesAsync(list, onComplete, onProgress);
         }
+
+        
+        /// <summary>
+        /// 异步加载单个Bundle
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="callback"></param>
+        /// <param name="autoCache"></param>
+        public void LoadBundleAsync(string url, Action<AssetBundle, string> callback, bool autoCache = true)
+        {
+            _loader.LoadBundleAsync(url, callback, autoCache);
+        }
+
+        /// <summary>
+        /// 同步加载单个Bundle
+        /// </summary>
+        /// <param name="bundleName"></param>
+        /// <param name="forceStreaming"></param>
+        /// <returns></returns>
+        public AssetBundle LoadBundle(string bundleName, bool forceStreaming = false) 
+            => _loader.LoadBundle(bundleName, forceStreaming);
+        
 
         #endregion
         
