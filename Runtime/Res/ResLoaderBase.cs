@@ -18,18 +18,34 @@ namespace GameBox
             get => _showLog;
             set => _showLog = value;
         }
-
-        private static string BundleDirPath
+        
+        /// <summary>
+        /// 平台参数
+        /// </summary>
+        private static string Platform
         {
             get
             {
 #if UNITY_IOS
-                return $"AssetBundles/iOS";
+                return "ios";
 #else
-                return $"AssetBundles/Android";
-#endif
+                return "android";
+#endif 
             }
         }
+
+        /// <summary>
+        /// Bundle存放路径 (全小写)
+        /// </summary>
+        public static string BundleDirPath => $"assetbundles/{Platform}";
+
+
+        public static string BundleStreamingPath(string bundleName)
+            => $"{Application.streamingAssetsPath}/${BundleDirPath}/{bundleName}";
+        
+        public static string BundleCachingPath(string bundleName)
+            => $"{Application.persistentDataPath}/${BundleDirPath}/{bundleName}";
+        
 
         private string _bundleSecret = ""; // 加密秘钥
 
@@ -149,7 +165,8 @@ namespace GameBox
         /// </summary>
         /// <param name="url"></param>
         /// <param name="callback"></param>
-        public void LoadBundleAsync(string url, Action<AssetBundle, string> callback)
+        /// <param name="autoCache">自动缓存bundle</param>
+        public void LoadBundleAsync(string url, Action<AssetBundle, string> callback, bool autoCache = true)
         {
             UnityWebRequest w = UnityWebRequest.Get(url);
             w.downloadHandler = new DownloadHandlerBuffer();
@@ -173,7 +190,14 @@ namespace GameBox
                                 Debug.Log($"start load enc bundle: {_bundleSecret}");
                                 bundle = Encrypter.DecryptBundle(data, _bundleSecret);
                             }
+                            
+                            if (autoCache)
+                            {
+                                SaveBundleToCache(data, bundle.name);
+                            }
+                            
                             callback?.Invoke(bundle, url);
+
                             return;
                         }
                         catch (Exception e)
@@ -189,6 +213,15 @@ namespace GameBox
             };
         }
 
+        /// <summary>
+        /// 将 Bundle 缓存至本地目录
+        /// </summary>
+        /// <param name="bundle"></param>
+        public void SaveBundleToCache(byte[] data, string bundleName)
+        {
+            var file = BundleCachingPath(bundleName);
+            File.WriteAllBytes(file, data);
+        }
 
         #endregion
 

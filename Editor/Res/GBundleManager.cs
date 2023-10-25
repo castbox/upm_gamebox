@@ -26,7 +26,6 @@ namespace GameBox
 
         #endregion
         
-
         #region 正常构建所有包体
 
         
@@ -73,8 +72,7 @@ namespace GameBox
         
         [MenuItem(TITLE_SIMULATION_OFF, true)]
         public static bool CheckSimulateModeOff() => SimulationMode == true;
-
-
+        
         [MenuItem(TITLE_SIMULATION_ON)]
         public static void SetSimulateModeOn() => SimulationMode = true;
         
@@ -82,8 +80,7 @@ namespace GameBox
         public static void SetSimulateModeOff() => SimulationMode = false;
         
         #endregion
-
-
+        
         #region 加密接口
         
         /// <summary>
@@ -155,7 +152,7 @@ namespace GameBox
         public static void TEST__EncryptAllBundles()
         {
             string from = $"{Application.dataPath}/../AssetBundles/Android";
-            string to = $"{Application.streamingAssetsPath}/assetbundles/android";
+            string to = $"{Application.streamingAssetsPath}/{ResLoaderBase.BundleDirPath}";
 
             Debug.Log($" in:{from} -> out:{to}");
             EncryptAllBundlesInPath(test_secret, from, to);
@@ -164,7 +161,7 @@ namespace GameBox
         [Test]
         public static void TEST__DecryptAllBundles()
         {
-            string from = $"{Application.streamingAssetsPath}/assetbundles/android";
+            string from = $"{Application.streamingAssetsPath}/{ResLoaderBase.BundleDirPath}";
             DecryptAllBundlesInPath(test_secret, from);
         }
 

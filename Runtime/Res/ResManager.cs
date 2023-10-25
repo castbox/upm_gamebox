@@ -114,59 +114,173 @@ namespace GameBox
 
         #region 资源预加载
 
-
-
-        private Action _preloadCompleteHandle;
-        private Action<float> _preloadProgressHandle;
-        private int _preloadCount;
-        private int _preloadIdx;
-        private List<string> _preloadList;
-
         /// <summary>
         /// 预加载嵌入式的Bundle
         /// </summary>
-        /// <param name="bundles"></param>
+        /// <param name="bundleNames"></param>
         /// <param name="onComplete"></param>
         /// <param name="onProgress"></param>
-        public void PreloadEmbedBundles(List<string> bundles, Action onComplete, Action<float> onProgress = null)
-        {
-            _preloadCompleteHandle = onComplete;
-            _preloadProgressHandle = onProgress;
-            _preloadIdx = 0;
-            _preloadCount = bundles.Count;
-            _preloadList = bundles;
-            LoadNextBundle();
-        }
+        public void PreloadEmbedBundles(IList<string> bundleNames, Action onComplete, Action<float> onProgress = null)
+            => LoadBundlesFromStreaming(bundleNames, onComplete, onProgress);
 
+        #endregion
+        
+        
+        
+        #region Bundle 加载队列
+
+        private Action _bundleLoadCompleteHandle = () => { };
+        private Action<float> _bundleLoadProgressHandle = p => { };
+        private int _bundleLoadCount;
+        private int _bundleLoadIdx;
+        private List<ResLoadBundleRequest> _loadBundleQuests;
+
+        /// <summary>
+        /// 异步加载所有的Bundle
+        /// </summary>
+        /// <param name="requests"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="onProgress"></param>
+        private void LoadBundlesAsync(IList<ResLoadBundleRequest> requests, Action onComplete, Action<float> onProgress = null)
+        {
+            _bundleLoadCompleteHandle += onComplete;
+            _bundleLoadProgressHandle += onProgress;
+            
+            if (_loadBundleQuests == null)
+            {
+                _loadBundleQuests = new List<ResLoadBundleRequest>(10);
+            }
+            _loadBundleQuests.AddRange(requests);
+            
+            LoadNextBundle(); // 加载剩余的Bundles
+        }
+        
+        
+        /// <summary>
+        /// 加载下一个Bundle
+        /// </summary>
         private void LoadNextBundle()
         {
-
-            if (_preloadIdx >= _preloadCount)
+            if (_bundleLoadIdx >= _bundleLoadCount)
             {
                 // 全部加载完毕
-                _preloadCompleteHandle?.Invoke();
+                _bundleLoadCompleteHandle?.Invoke();
+                _bundleLoadIdx = 0;
+                _bundleLoadCompleteHandle = () => { };
+                _bundleLoadProgressHandle = p => { };
                 return;
             }
-
-            string platform = "android";
-#if UNITY_IOS
-            platform = "ios";
-#endif
-            string bundleName = _preloadList[_preloadIdx];
-            string url = $"{Application.streamingAssetsPath}/assetbundles/{platform}/{bundleName}";
-#if UNITY_EDITOR || UNITY_IOS
-            url = $"file://{url}";
-#endif
+            
+            string bundleName = _loadBundleQuests[_bundleLoadIdx].name;
+            string url = _loadBundleQuests[_bundleLoadIdx].url;
             _loader.LoadBundleAsync(url, (bundle, s) =>
             {
                 if (bundle != null)
                 {
                     Bundles[bundleName] = bundle;
-                    _preloadIdx++;
-                    _preloadProgressHandle?.Invoke((float)_preloadIdx/_preloadCount); // 上报进度
+                    _bundleLoadIdx++;
+                    _bundleLoadProgressHandle?.Invoke((float)_bundleLoadIdx/_bundleLoadCount); // 上报进度
                 }
                 LoadNextBundle();
             });
+        }
+
+
+
+        /// <summary>
+        /// 从URL加载Bundle
+        /// </summary>
+        /// <param name="urls"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="onProgress"></param>
+        public void LoadBundlesFromUrl(IList<string> urls, Action onComplete, Action<float> onProgress = null)
+        {
+            List<ResLoadBundleRequest> list = new List<ResLoadBundleRequest>(urls.Count);
+
+            string name = "";
+            string url;
+            for (int i = 0; i < urls.Count; i++)
+            {
+                url = urls[i].Replace("\\", "/");
+                if (url.Contains("/"))
+                {
+                    try
+                    {
+                        name = url.Split('/').Last();
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                    }
+         
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        list.Add(ResLoadBundleRequest.Build(name, url)); 
+                    }
+                }
+            }
+
+            if (list.Count == 0) return;
+
+            // 调用接口
+            LoadBundlesAsync(list, onComplete, onProgress);
+        }
+
+        
+        /// <summary>
+        /// 从本地缓存中加载Bundles
+        /// </summary>
+        /// <param name="names"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="onProgress"></param>
+        public void LoadBundlesFromCache(IList<string> names, Action onComplete, Action<float> onProgress = null)
+        {
+            List<ResLoadBundleRequest> list = new List<ResLoadBundleRequest>(names.Count);
+            
+            string name = "";
+            string url = "";
+            for (int i = 0; i < names.Count; i++)
+            {
+                name = names[i];
+                url = ResLoaderBase.BundleCachingPath(name);
+#if !UNITY_ANDROID
+                url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
+#endif
+                list.Add(ResLoadBundleRequest.Build(name, url));
+            }
+
+            if (list.Count == 0) return;
+
+            // 调用接口
+            LoadBundlesAsync(list, onComplete, onProgress);
+        }
+
+        /// <summary>
+        /// 从本地缓存中加载Bundles
+        /// </summary>
+        /// <param name="names"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="onProgress"></param>
+        public void LoadBundlesFromStreaming(IList<string> names, Action onComplete, Action<float> onProgress = null)
+        {
+            List<ResLoadBundleRequest> list = new List<ResLoadBundleRequest>(names.Count);
+            
+            string name = "";
+            string url = "";
+            for (int i = 0; i < names.Count; i++)
+            {
+                name = names[i];
+                url = ResLoaderBase.BundleStreamingPath(name);
+#if !UNITY_ANDROID
+                url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
+#endif
+                list.Add(ResLoadBundleRequest.Build(name, url));
+            }
+
+            if (list.Count == 0) return;
+
+            // 调用接口
+            LoadBundlesAsync(list, onComplete, onProgress);
         }
 
         #endregion
@@ -350,4 +464,5 @@ namespace GameBox
 
         #endregion
     }
+
 }
