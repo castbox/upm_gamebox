@@ -299,7 +299,15 @@ namespace GameBox
         /// <param name="autoCache"></param>
         public void LoadBundleAsync(string url, Action<AssetBundle, string> callback, bool autoCache = true)
         {
-            _loader.LoadBundleAsync(url, callback, autoCache);
+            _loader.LoadBundleAsync(url, (bundle, error) =>
+            {
+                if (bundle != null)
+                {
+                    Bundles[bundle.name] = bundle;
+                }
+                
+                callback?.Invoke(bundle, error);
+            }, autoCache);
         }
 
         /// <summary>

@@ -195,8 +195,8 @@ namespace GameBox
                             {
                                 SaveBundleToCache(data, bundle.name);
                             }
-                            
-                            callback?.Invoke(bundle, url);
+
+                            callback?.Invoke(bundle, "");
 
                             return;
                         }
@@ -207,9 +207,8 @@ namespace GameBox
                     }
                 }
                 
-                Debug.LogError($"Load Bundle error: {url}");
-                Debug.LogError($"{w.error}");
-                callback?.Invoke(null, url);
+                Debug.LogError($"Load Bundle {url}  error: {w.error}");
+                callback?.Invoke(null, w.error);
             };
         }
 
