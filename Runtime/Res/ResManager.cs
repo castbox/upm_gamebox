@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.U2D;
@@ -33,6 +34,35 @@ namespace GameBox
             }
         }
         
+        /// <summary>
+        /// 平台参数
+        /// </summary>
+        private static string Platform
+        {
+            get
+            {
+#if UNITY_IOS
+                return "iOS";
+#else
+                return "Android";
+#endif 
+            }
+        }
+        
+        public const string K_ASSET_BUNLDES = "AssetBundles";
+        
+        /// <summary>
+        /// Bundle存放路径 (全小写)
+        /// </summary>
+        public static string BundleDirPath => $"{K_ASSET_BUNLDES}/{Platform}";
+        
+        public static string BundleStreamingPath(string bundleName)
+            => $"{Application.streamingAssetsPath}/{BundleDirPath.ToLower()}/{bundleName}";
+        
+        public static string BundleCachingPath(string bundleName)
+            => $"{Application.persistentDataPath}/{BundleDirPath.ToLower()}/{bundleName}";
+        
+        
         
         #region 资源缓存
 
@@ -64,8 +94,11 @@ namespace GameBox
         /// 设置加载器秘钥
         /// </summary>
         /// <param name="secret"></param>
-        public void SetBundleSecret(string secret) => _loader.BundleSecret = secret;
-
+        public void SetBundleSecret(string secret, bool useOffset = true)
+        {
+            _loader.BundleSecret = secret;
+            _loader.EncryptedOffset = useOffset;
+        }
 
         #endregion
         
@@ -133,6 +166,7 @@ namespace GameBox
         private Action<float> _bundleLoadProgressHandle = p => { };
         private int _bundleLoadCount;
         private int _bundleLoadIdx;
+        private int _retryTimes;
         private List<ResLoadBundleRequest> _loadBundleQuests;
 
         /// <summary>
@@ -161,6 +195,8 @@ namespace GameBox
         /// </summary>
         private void LoadNextBundle()
         {
+
+            _bundleLoadCount = _loadBundleQuests.Count; // 更新加载计数器
             if (_bundleLoadIdx >= _bundleLoadCount)
             {
                 // 全部加载完毕
@@ -168,6 +204,8 @@ namespace GameBox
                 _bundleLoadIdx = 0;
                 _bundleLoadCompleteHandle = () => { };
                 _bundleLoadProgressHandle = p => { };
+                _bundleLoadCount = 0;
+                _loadBundleQuests.Clear();
                 return;
             }
             
@@ -179,10 +217,21 @@ namespace GameBox
                 {
                     Bundles[bundleName] = bundle;
                     _bundleLoadIdx++;
+                    _retryTimes = 0;
                     _bundleLoadProgressHandle?.Invoke((float)_bundleLoadIdx/_bundleLoadCount); // 上报进度
                 }
                 else
                 {
+                    if (_retryTimes < 3)
+                    {
+                        _retryTimes++;
+                    }
+                    else
+                    {
+                        _retryTimes = 0;
+                        _bundleLoadIdx++;
+                    }
+
                     if (!string.IsNullOrEmpty(s))
                     {
                         Debug.LogError($"{Tag} Load bundle failed: {s}");
@@ -249,8 +298,8 @@ namespace GameBox
             for (int i = 0; i < names.Count; i++)
             {
                 name = names[i];
-                url = ResLoaderBase.BundleCachingPath(name);
-#if !UNITY_ANDROID
+                url = BundleCachingPath(name);
+#if UNITY_EDITOR || UNITY_IOS
                 url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
 #endif
                 list.Add(ResLoadBundleRequest.Build(name, url));
@@ -277,8 +326,8 @@ namespace GameBox
             for (int i = 0; i < names.Count; i++)
             {
                 name = names[i];
-                url = ResLoaderBase.BundleStreamingPath(name);
-#if !UNITY_ANDROID
+                url = BundleStreamingPath(name);
+#if UNITY_EDITOR || UNITY_IOS
                 url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
 #endif
                 list.Add(ResLoadBundleRequest.Build(name, url));
@@ -483,6 +532,20 @@ namespace GameBox
                 }
             }
             return default(T);
+        }
+
+        #endregion
+
+        #region IO管理
+
+        /// <summary>
+        /// 确保文件的父级目录一定存在
+        /// </summary>
+        /// <param name="filePath"></param>
+        public static void EnsureDirectory(string filePath)
+        {
+            var dir = Directory.GetParent(filePath);
+            if(!dir.Exists) dir.Create();
         }
 
         #endregion

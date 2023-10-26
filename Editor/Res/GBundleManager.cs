@@ -28,7 +28,6 @@ namespace GameBox
         
         #region 正常构建所有包体
 
-        
         [MenuItem("GameBox/Bundle/Build All Bundles")]
         public static void BuildAllBundles()
         {
@@ -59,25 +58,26 @@ namespace GameBox
                         File.Delete(ResSimulateFlagPath);
                     }
                 }
-                
-                Debug.Log($"Set Bundle Simulation: {SimulationMode}");
+
+                string c = SimulationMode ? "#88ff00" : "red";
+                Debug.Log($"Set Bundle Simulation: <color={c}>{SimulationMode}</color>");
             }
         }
 
-        private const string TITLE_SIMULATION_ON = "GameBox/Bundle/Simulation ✅";
-        private const string TITLE_SIMULATION_OFF = "GameBox/Bundle/Simulation ❎";
+        private const string TITLE_SIMULATION_ON = "GameBox/Bundle/Simulation - ON ✅";
+        private const string TITLE_SIMULATION_OFF = "GameBox/Bundle/Simulation - OFF ❎";
 
         [MenuItem(TITLE_SIMULATION_ON, true)]
-        public static bool CheckSimulateModeOn() => SimulationMode == false;
+        public static bool CheckSimulateModeOn() => SimulationMode == true;
         
         [MenuItem(TITLE_SIMULATION_OFF, true)]
-        public static bool CheckSimulateModeOff() => SimulationMode == true;
+        public static bool CheckSimulateModeOff() => SimulationMode == false;
         
         [MenuItem(TITLE_SIMULATION_ON)]
-        public static void SetSimulateModeOn() => SimulationMode = true;
+        public static void SetSimulateModeOn() => SimulationMode = false;
         
         [MenuItem(TITLE_SIMULATION_OFF)]
-        public static void SetSimulateModeOff() => SimulationMode = false;
+        public static void SetSimulateModeOff() => SimulationMode = true;
         
         #endregion
         
@@ -151,8 +151,8 @@ namespace GameBox
         [Test]
         public static void TEST__EncryptAllBundles()
         {
-            string from = $"{Application.dataPath}/../AssetBundles/Android";
-            string to = $"{Application.streamingAssetsPath}/{ResLoaderBase.BundleDirPath}";
+            string from = Path.GetFullPath($"{Application.dataPath}/../AssetBundles/Android");
+            string to = $"{Application.streamingAssetsPath}/{ResManager.BundleDirPath}";
 
             Debug.Log($" in:{from} -> out:{to}");
             EncryptAllBundlesInPath(test_secret, from, to);
@@ -161,7 +161,7 @@ namespace GameBox
         [Test]
         public static void TEST__DecryptAllBundles()
         {
-            string from = $"{Application.streamingAssetsPath}/{ResLoaderBase.BundleDirPath}";
+            string from = $"{Application.streamingAssetsPath}/{ResManager.BundleDirPath}";
             DecryptAllBundlesInPath(test_secret, from);
         }
 
@@ -180,6 +180,37 @@ namespace GameBox
     public class GAssetBundleAPI
     {
         public const string Version = "0.0.1";
+        public const string ASSET_PATH_NAME = "Assets";
+        public const string ASSETBUNLDES_PATH_NAME = "AssetBundles";
+        
+        /// <summary>
+        /// 构建目标名称
+        /// </summary>
+        public static string BuildTargetName => 
+            EditorUserBuildSettings.activeBuildTarget.ToString();
+        
+        /// <summary>
+        /// 打包输出根目录
+        /// </summary>
+        private static string OutputRoot => 
+            Path.GetFullPath($"{Application.dataPath}/../{ASSETBUNLDES_PATH_NAME}");
+        
+        /// <summary>
+        /// 打包输出目录
+        /// </summary>
+        public static string OutputPath => $"{OutputRoot}/{BuildTargetName}";
+
+        /// <summary>
+        /// 项目配置根目录
+        /// </summary>
+        private static string StagingRoot =>
+            Path.GetFullPath($"{Application.streamingAssetsPath}/{ASSETBUNLDES_PATH_NAME.ToLower()}");
+
+        /// <summary>
+        /// 打包配置路径
+        /// </summary>
+        public static string StagingPath => $"{StagingRoot}/{BuildTargetName.ToLower()}";
+        
         
 
         /// <summary>
@@ -189,7 +220,7 @@ namespace GameBox
         /// <returns></returns>
         public static string GetAssetPath(string fullPath)
         {
-            return fullPath.Replace(Application.dataPath, "Assets");
+            return fullPath.Replace(Application.dataPath, ASSET_PATH_NAME);
         }
         
         private static void EnsurePathExist(string path)
@@ -308,7 +339,7 @@ namespace GameBox
             
             ApplyManifest(gbm);
             
-            var outputRoot = $"{Application.dataPath}/../assetbundles";
+            var outputRoot = OutputRoot;
             var buildPath = $"{outputRoot}/{buildTarget.ToString()}";
 
             EnsurePathExist(buildPath);
@@ -328,17 +359,16 @@ namespace GameBox
             // 如果是本地包
             if (isLocalBundle)
             {
-                string localDir = $"{Application.streamingAssetsPath}/assetbundles/{buildTarget.ToString()}".ToLower();
-                EnsurePathExist(localDir);
+                string staging = StagingPath;
+                EnsurePathExist(staging);
                 string from, to;
                 foreach (var bundle in gbm.bundles)
                 {
                     from = $"{buildPath}/{bundle.name}";
-                    to = $"{localDir}/{bundle.name}";
+                    to = $"{staging}/{bundle.name}";
                     File.Copy(from, to, true);    
                 }
-                OpenPath(localDir);
-                
+                OpenPath(staging);
             }
             else
             {

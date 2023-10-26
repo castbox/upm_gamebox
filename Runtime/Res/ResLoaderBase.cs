@@ -19,33 +19,7 @@ namespace GameBox
             set => _showLog = value;
         }
         
-        /// <summary>
-        /// 平台参数
-        /// </summary>
-        private static string Platform
-        {
-            get
-            {
-#if UNITY_IOS
-                return "ios";
-#else
-                return "android";
-#endif 
-            }
-        }
 
-        /// <summary>
-        /// Bundle存放路径 (全小写)
-        /// </summary>
-        public static string BundleDirPath => $"assetbundles/{Platform}";
-
-
-        public static string BundleStreamingPath(string bundleName)
-            => $"{Application.streamingAssetsPath}/${BundleDirPath}/{bundleName}";
-        
-        public static string BundleCachingPath(string bundleName)
-            => $"{Application.persistentDataPath}/${BundleDirPath}/{bundleName}";
-        
 
         private string _bundleSecret = ""; // 加密秘钥
 
@@ -54,6 +28,8 @@ namespace GameBox
             get => _bundleSecret;
             set => _bundleSecret = value;
         }
+
+        public bool EncryptedOffset { get; set; } = true;
 
         #region 加载接口
         
@@ -98,7 +74,7 @@ namespace GameBox
         /// <returns></returns>
         protected virtual AssetBundle LoadStreamingBundle(string bundleName, string secret = "")
         {
-            string filePath = $"{Application.streamingAssetsPath}/{BundleDirPath}/{bundleName}";
+            string filePath = ResManager.BundleStreamingPath(bundleName);
             LogD($"Load streaming bundles: {filePath}");
             return TryLoadBundleFromPath(filePath, secret);
         }
@@ -110,7 +86,7 @@ namespace GameBox
         /// <returns></returns>
         protected virtual AssetBundle LoadSavedBundle(string bundleName, string secret = "")
         {
-            string filePath = $"{Application.persistentDataPath}/{BundleDirPath}/{bundleName}";
+            string filePath = ResManager.BundleCachingPath(bundleName);
             if (!File.Exists(filePath)) return null;
             LogD($"Load saved bundles: {filePath}");
             return TryLoadBundleFromPath(filePath, secret);
@@ -188,17 +164,20 @@ namespace GameBox
                             else
                             {
                                 Debug.Log($"start load enc bundle: {_bundleSecret}");
-                                bundle = Encrypter.DecryptBundle(data, _bundleSecret);
+                                bundle = Encrypter.DecryptBundle(data, _bundleSecret, EncryptedOffset);
                             }
-                            
-                            if (autoCache)
+
+                            if (bundle != null)
                             {
-                                SaveBundleToCache(data, bundle.name);
+                                if (autoCache)
+                                {
+                                    SaveBundleToCache(data, bundle.name);
+                                }
+
+                                callback?.Invoke(bundle, "");
+
+                                return;
                             }
-
-                            callback?.Invoke(bundle, "");
-
-                            return;
                         }
                         catch (Exception e)
                         {
@@ -206,9 +185,11 @@ namespace GameBox
                         }
                     }
                 }
-                
-                Debug.LogError($"Load Bundle {url}  error: {w.error}");
-                callback?.Invoke(null, w.error);
+                string error = w.error;
+                Debug.LogError($"Load Bundle {url}  error: {error}");
+                w.downloadHandler.Dispose();
+                w.Dispose();
+                callback?.Invoke(null, error);
             };
         }
 
@@ -218,7 +199,8 @@ namespace GameBox
         /// <param name="bundle"></param>
         public void SaveBundleToCache(byte[] data, string bundleName)
         {
-            var file = BundleCachingPath(bundleName);
+            var file = ResManager.BundleCachingPath(bundleName);
+            ResManager.EnsureDirectory(file);
             File.WriteAllBytes(file, data);
         }
 
