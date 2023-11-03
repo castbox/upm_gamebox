@@ -154,7 +154,7 @@ namespace GameBox
         /// <param name="onComplete"></param>
         /// <param name="onProgress"></param>
         public void PreloadEmbedBundles(IList<string> bundleNames, Action onComplete, Action<float> onProgress = null)
-            => LoadBundlesFromStreaming(bundleNames, onComplete, onProgress);
+            => LoadBundlesInternal(bundleNames, onComplete, onProgress);
 
         #endregion
         
@@ -312,12 +312,12 @@ namespace GameBox
         }
 
         /// <summary>
-        /// 从本地缓存中加载Bundles
+        /// 从App内部加载Bundles
         /// </summary>
         /// <param name="names"></param>
         /// <param name="onComplete"></param>
         /// <param name="onProgress"></param>
-        public void LoadBundlesFromStreaming(IList<string> names, Action onComplete, Action<float> onProgress = null)
+        public void LoadBundlesInternal(IList<string> names, Action onComplete, Action<float> onProgress = null)
         {
             List<ResLoadBundleRequest> list = new List<ResLoadBundleRequest>(names.Count);
             
@@ -326,10 +326,22 @@ namespace GameBox
             for (int i = 0; i < names.Count; i++)
             {
                 name = names[i];
-                url = BundleStreamingPath(name);
+                
+                url = BundleCachingPath(name);
+                if (!File.Exists(url))
+                {
+                    url = BundleStreamingPath(name);
+                    Debug.Log($">>> Load Bundle from Streaming: {url}");
+                }
+                else
+                {
+                    Debug.Log($">>> Load Bundle from Cache: {url}");
+                }
+                
 #if UNITY_EDITOR || UNITY_IOS
-                url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
+                    url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
 #endif
+                
                 list.Add(ResLoadBundleRequest.Build(name, url));
             }
 
