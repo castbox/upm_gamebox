@@ -88,9 +88,7 @@ namespace GameBox
             }
 
         }
-
-
-
+        
         #region Pad 平板适配模式
 
         private void SetPadMode(bool value)
@@ -110,20 +108,7 @@ namespace GameBox
         
 
         #endregion
-
-        #region 刘海屏适配
-
-        private void SetTopSafeArea()
-        {
-            _rootNode.sizeDelta = new Vector2(0, -SAFE_TOP_HEIGHT);
-            _rootNode.anchoredPosition = new Vector2(0, -SAFE_TOP_HEIGHT * 0.5f);
-        }
-
         
-
-        #endregion
-
-
 
     }
 }

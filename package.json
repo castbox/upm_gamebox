@@ -1,11 +1,18 @@
 {
   "name": "com.guru.unity.gamebox",
   "displayName": "GameBox",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "game box lite version for unity team",
   "unity": "2020.3",
+  "author":{
+    "name": "Guru Fungames Studio"
+  },
   "license": "MIT",
-  "category": "Game tool",
+  "category": ["Game","tool"],
   "dependencies": {
+    "com.coffee.upm-git-extension": "https://github.com/mob-sakai/UpmGitExtension.git#main",
+    "com.unity.device-simulator": "3.1.0-preview",
+    "com.unity.assetbundlebrowser": "https://github.com/Unity-Technologies/AssetBundles-Browser.git",
+    "com.guru.unity.3rd.tools": "https://github.com/castbox/upm_3rd_tools.git#0.0.1"
   }
 }

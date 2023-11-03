@@ -18,18 +18,8 @@ namespace GameBox
             get => _showLog;
             set => _showLog = value;
         }
+        
 
-        private static string BundleDirPath
-        {
-            get
-            {
-#if UNITY_IOS
-                return $"AssetBundles/iOS";
-#else
-                return $"AssetBundles/Android";
-#endif
-            }
-        }
 
         private string _bundleSecret = ""; // 加密秘钥
 
@@ -38,6 +28,8 @@ namespace GameBox
             get => _bundleSecret;
             set => _bundleSecret = value;
         }
+
+        public bool EncryptedOffset { get; set; } = true;
 
         #region 加载接口
         
@@ -82,7 +74,7 @@ namespace GameBox
         /// <returns></returns>
         protected virtual AssetBundle LoadStreamingBundle(string bundleName, string secret = "")
         {
-            string filePath = $"{Application.streamingAssetsPath}/{BundleDirPath}/{bundleName}";
+            string filePath = ResManager.BundleStreamingPath(bundleName);
             LogD($"Load streaming bundles: {filePath}");
             return TryLoadBundleFromPath(filePath, secret);
         }
@@ -94,7 +86,7 @@ namespace GameBox
         /// <returns></returns>
         protected virtual AssetBundle LoadSavedBundle(string bundleName, string secret = "")
         {
-            string filePath = $"{Application.persistentDataPath}/{BundleDirPath}/{bundleName}";
+            string filePath = ResManager.BundleCachingPath(bundleName);
             if (!File.Exists(filePath)) return null;
             LogD($"Load saved bundles: {filePath}");
             return TryLoadBundleFromPath(filePath, secret);
@@ -149,7 +141,8 @@ namespace GameBox
         /// </summary>
         /// <param name="url"></param>
         /// <param name="callback"></param>
-        public void LoadBundleAsync(string url, Action<AssetBundle, string> callback)
+        /// <param name="autoCache">自动缓存bundle</param>
+        public void LoadBundleAsync(string url, Action<AssetBundle, string> callback, bool autoCache = true)
         {
             UnityWebRequest w = UnityWebRequest.Get(url);
             w.downloadHandler = new DownloadHandlerBuffer();
@@ -171,10 +164,20 @@ namespace GameBox
                             else
                             {
                                 Debug.Log($"start load enc bundle: {_bundleSecret}");
-                                bundle = Encrypter.DecryptBundle(data, _bundleSecret);
+                                bundle = Encrypter.DecryptBundle(data, _bundleSecret, EncryptedOffset);
                             }
-                            callback?.Invoke(bundle, url);
-                            return;
+
+                            if (bundle != null)
+                            {
+                                if (autoCache)
+                                {
+                                    SaveBundleToCache(data, bundle.name);
+                                }
+
+                                callback?.Invoke(bundle, "");
+
+                                return;
+                            }
                         }
                         catch (Exception e)
                         {
@@ -182,13 +185,24 @@ namespace GameBox
                         }
                     }
                 }
-                
-                Debug.LogError($"Load Bundle error: {url}");
-                Debug.LogError($"{w.error}");
-                callback?.Invoke(null, url);
+                string error = w.error;
+                Debug.LogError($"Load Bundle {url}  error: {error}");
+                w.downloadHandler.Dispose();
+                w.Dispose();
+                callback?.Invoke(null, error);
             };
         }
 
+        /// <summary>
+        /// 将 Bundle 缓存至本地目录
+        /// </summary>
+        /// <param name="bundle"></param>
+        public void SaveBundleToCache(byte[] data, string bundleName)
+        {
+            var file = ResManager.BundleCachingPath(bundleName);
+            ResManager.EnsureDirectory(file);
+            File.WriteAllBytes(file, data);
+        }
 
         #endregion
 

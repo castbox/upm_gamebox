@@ -203,7 +203,7 @@ namespace GameBox
             GameObject go = Res.CloneGameObject(assetName, bundleName, parent);
             if (null != go)
             {
-                var idx = assetName.LastIndexOf("/", StringComparison.Ordinal);
+                var idx = assetName.LastIndexOf("/", StringComparison.Ordinal) + 1;
                 if (idx < 0) idx = 0;
                 T v = BindView<T>(go, assetName.Substring(idx));
                 if (!string.IsNullOrEmpty(bundleName)) v.BundleName = bundleName; // 设置依赖包名

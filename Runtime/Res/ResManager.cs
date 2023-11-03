@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.U2D;
@@ -33,6 +34,35 @@ namespace GameBox
             }
         }
         
+        /// <summary>
+        /// 平台参数
+        /// </summary>
+        private static string Platform
+        {
+            get
+            {
+#if UNITY_IOS
+                return "iOS";
+#else
+                return "Android";
+#endif 
+            }
+        }
+        
+        public const string K_ASSET_BUNLDES = "AssetBundles";
+        
+        /// <summary>
+        /// Bundle存放路径 (全小写)
+        /// </summary>
+        public static string BundleDirPath => $"{K_ASSET_BUNLDES}/{Platform}";
+        
+        public static string BundleStreamingPath(string bundleName)
+            => $"{Application.streamingAssetsPath}/{BundleDirPath.ToLower()}/{bundleName}";
+        
+        public static string BundleCachingPath(string bundleName)
+            => $"{Application.persistentDataPath}/{BundleDirPath.ToLower()}/{bundleName}";
+        
+        
         
         #region 资源缓存
 
@@ -64,8 +94,11 @@ namespace GameBox
         /// 设置加载器秘钥
         /// </summary>
         /// <param name="secret"></param>
-        public void SetBundleSecret(string secret) => _loader.BundleSecret = secret;
-
+        public void SetBundleSecret(string secret, bool useOffset = true)
+        {
+            _loader.BundleSecret = secret;
+            _loader.EncryptedOffset = useOffset;
+        }
 
         #endregion
         
@@ -114,60 +147,239 @@ namespace GameBox
 
         #region 资源预加载
 
-
-
-        private Action _preloadCompleteHandle;
-        private Action<float> _preloadProgressHandle;
-        private int _preloadCount;
-        private int _preloadIdx;
-        private List<string> _preloadList;
-
         /// <summary>
         /// 预加载嵌入式的Bundle
         /// </summary>
-        /// <param name="bundles"></param>
+        /// <param name="bundleNames"></param>
         /// <param name="onComplete"></param>
         /// <param name="onProgress"></param>
-        public void PreloadEmbedBundles(List<string> bundles, Action onComplete, Action<float> onProgress = null)
-        {
-            _preloadCompleteHandle = onComplete;
-            _preloadProgressHandle = onProgress;
-            _preloadIdx = 0;
-            _preloadCount = bundles.Count;
-            _preloadList = bundles;
-            LoadNextBundle();
-        }
+        public void PreloadEmbedBundles(IList<string> bundleNames, Action onComplete, Action<float> onProgress = null)
+            => LoadBundlesInternal(bundleNames, onComplete, onProgress);
 
+        #endregion
+        
+        
+        
+        #region Bundle 加载队列
+
+        private Action _bundleLoadCompleteHandle = () => { };
+        private Action<float> _bundleLoadProgressHandle = p => { };
+        private int _bundleLoadCount;
+        private int _bundleLoadIdx;
+        private int _retryTimes;
+        private List<ResLoadBundleRequest> _loadBundleQuests;
+
+        /// <summary>
+        /// 异步加载所有的Bundle
+        /// </summary>
+        /// <param name="requests"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="onProgress"></param>
+        private void LoadBundlesAsync(IList<ResLoadBundleRequest> requests, Action onComplete, Action<float> onProgress = null)
+        {
+            _bundleLoadCompleteHandle += onComplete;
+            _bundleLoadProgressHandle += onProgress;
+            
+            if (_loadBundleQuests == null)
+            {
+                _loadBundleQuests = new List<ResLoadBundleRequest>(10);
+            }
+            _loadBundleQuests.AddRange(requests);
+            
+            LoadNextBundle(); // 加载剩余的Bundles
+        }
+        
+        
+        /// <summary>
+        /// 加载下一个Bundle
+        /// </summary>
         private void LoadNextBundle()
         {
 
-            if (_preloadIdx >= _preloadCount)
+            _bundleLoadCount = _loadBundleQuests.Count; // 更新加载计数器
+            if (_bundleLoadIdx >= _bundleLoadCount)
             {
                 // 全部加载完毕
-                _preloadCompleteHandle?.Invoke();
+                _bundleLoadCompleteHandle?.Invoke();
+                _bundleLoadIdx = 0;
+                _bundleLoadCompleteHandle = () => { };
+                _bundleLoadProgressHandle = p => { };
+                _bundleLoadCount = 0;
+                _loadBundleQuests.Clear();
                 return;
             }
-
-            string platform = "android";
-#if UNITY_IOS
-            platform = "ios";
-#endif
-            string bundleName = _preloadList[_preloadIdx];
-            string url = $"{Application.streamingAssetsPath}/assetbundles/{platform}/{bundleName}";
-#if UNITY_EDITOR || UNITY_IOS
-            url = $"file://{url}";
-#endif
-            _loader.LoadBundleAsync(url, (bundle, s) =>
+            
+            string bundleName = _loadBundleQuests[_bundleLoadIdx].name;
+            string url = _loadBundleQuests[_bundleLoadIdx].url;
+            LoadBundleAsync(url, (bundle, s) =>
             {
                 if (bundle != null)
                 {
                     Bundles[bundleName] = bundle;
-                    _preloadIdx++;
-                    _preloadProgressHandle?.Invoke((float)_preloadIdx/_preloadCount); // 上报进度
+                    _bundleLoadIdx++;
+                    _retryTimes = 0;
+                    _bundleLoadProgressHandle?.Invoke((float)_bundleLoadIdx/_bundleLoadCount); // 上报进度
+                }
+                else
+                {
+                    if (_retryTimes < 3)
+                    {
+                        _retryTimes++;
+                    }
+                    else
+                    {
+                        _retryTimes = 0;
+                        _bundleLoadIdx++;
+                    }
+
+                    if (!string.IsNullOrEmpty(s))
+                    {
+                        Debug.LogError($"{Tag} Load bundle failed: {s}");
+                    }
                 }
                 LoadNextBundle();
             });
         }
+
+
+
+        /// <summary>
+        /// 从URL加载Bundle
+        /// </summary>
+        /// <param name="urls"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="onProgress"></param>
+        public void LoadBundlesFromUrl(IList<string> urls, Action onComplete, Action<float> onProgress = null)
+        {
+            List<ResLoadBundleRequest> list = new List<ResLoadBundleRequest>(urls.Count);
+
+            string name = "";
+            string url;
+            for (int i = 0; i < urls.Count; i++)
+            {
+                url = urls[i].Replace("\\", "/");
+                if (url.Contains("/"))
+                {
+                    try
+                    {
+                        name = url.Split('/').Last();
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                    }
+         
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        list.Add(ResLoadBundleRequest.Build(name, url)); 
+                    }
+                }
+            }
+
+            if (list.Count == 0) return;
+
+            // 调用接口
+            LoadBundlesAsync(list, onComplete, onProgress);
+        }
+
+        
+        /// <summary>
+        /// 从本地缓存中加载Bundles
+        /// </summary>
+        /// <param name="names"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="onProgress"></param>
+        public void LoadBundlesFromCache(IList<string> names, Action onComplete, Action<float> onProgress = null)
+        {
+            List<ResLoadBundleRequest> list = new List<ResLoadBundleRequest>(names.Count);
+            
+            string name = "";
+            string url = "";
+            for (int i = 0; i < names.Count; i++)
+            {
+                name = names[i];
+                url = BundleCachingPath(name);
+#if UNITY_EDITOR || UNITY_IOS
+                url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
+#endif
+                list.Add(ResLoadBundleRequest.Build(name, url));
+            }
+
+            if (list.Count == 0) return;
+
+            // 调用接口
+            LoadBundlesAsync(list, onComplete, onProgress);
+        }
+
+        /// <summary>
+        /// 从App内部加载Bundles
+        /// </summary>
+        /// <param name="names"></param>
+        /// <param name="onComplete"></param>
+        /// <param name="onProgress"></param>
+        public void LoadBundlesInternal(IList<string> names, Action onComplete, Action<float> onProgress = null)
+        {
+            List<ResLoadBundleRequest> list = new List<ResLoadBundleRequest>(names.Count);
+            
+            string name = "";
+            string url = "";
+            for (int i = 0; i < names.Count; i++)
+            {
+                name = names[i];
+                
+                url = BundleCachingPath(name);
+                if (!File.Exists(url))
+                {
+                    url = BundleStreamingPath(name);
+                    Debug.Log($">>> Load Bundle from Streaming: {url}");
+                }
+                else
+                {
+                    Debug.Log($">>> Load Bundle from Cache: {url}");
+                }
+                
+#if UNITY_EDITOR || UNITY_IOS
+                    url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
+#endif
+                
+                list.Add(ResLoadBundleRequest.Build(name, url));
+            }
+
+            if (list.Count == 0) return;
+
+            // 调用接口
+            LoadBundlesAsync(list, onComplete, onProgress);
+        }
+
+        
+        /// <summary>
+        /// 异步加载单个Bundle
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="callback"></param>
+        /// <param name="autoCache"></param>
+        public void LoadBundleAsync(string url, Action<AssetBundle, string> callback, bool autoCache = true)
+        {
+            _loader.LoadBundleAsync(url, (bundle, error) =>
+            {
+                if (bundle != null)
+                {
+                    Bundles[bundle.name] = bundle;
+                }
+                
+                callback?.Invoke(bundle, error);
+            }, autoCache);
+        }
+
+        /// <summary>
+        /// 同步加载单个Bundle
+        /// </summary>
+        /// <param name="bundleName"></param>
+        /// <param name="forceStreaming"></param>
+        /// <returns></returns>
+        public AssetBundle LoadBundle(string bundleName, bool forceStreaming = false) 
+            => _loader.LoadBundle(bundleName, forceStreaming);
+        
 
         #endregion
         
@@ -336,6 +548,20 @@ namespace GameBox
 
         #endregion
 
+        #region IO管理
+
+        /// <summary>
+        /// 确保文件的父级目录一定存在
+        /// </summary>
+        /// <param name="filePath"></param>
+        public static void EnsureDirectory(string filePath)
+        {
+            var dir = Directory.GetParent(filePath);
+            if(!dir.Exists) dir.Create();
+        }
+
+        #endregion
+
         #region 编辑器功能
         
         /// <summary>
@@ -350,4 +576,5 @@ namespace GameBox
 
         #endregion
     }
+
 }

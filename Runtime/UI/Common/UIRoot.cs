@@ -38,6 +38,7 @@ namespace GameBox
         [SerializeField] private Canvas _rootCanvas;
         [SerializeField] private RectTransform _essentialNode;
         [SerializeField] private RectTransform _root;
+        [SerializeField] private Image _globalBackground; 
         [SerializeField] private CanvasScaler _rootScaler;
         [SerializeField] private Camera _camera;
         
@@ -54,7 +55,7 @@ namespace GameBox
         /// <summary>
         /// 生成整个UIRoot
         /// </summary>
-        private void CreatUIRoot()
+        private void Install()
         {
             gameObject.name = nameof(UIRoot);
             _uiLayerId = LayerMask.NameToLayer("UI"); // UILayer的ID
@@ -120,9 +121,12 @@ namespace GameBox
         /// <exception cref="NotImplementedException"></exception>
         private void Awake()
         {
-            name = nameof(UIRoot);
-            // DontDestroyOnLoad(gameObject);
-            InitEventSystem();
+            Init();
+        }
+
+        private void Start()
+        {
+            ApplySafeArea(Screen.safeArea);
         }
 
         /// <summary>
@@ -137,8 +141,68 @@ namespace GameBox
             return comp;
         }
 
+
+        private void Init()
+        {
+            name = nameof(UIRoot);
+            GlobalBackgroundActive = false;
+            InitEventSystem();
+        }
+
         #endregion
 
+        #region 全屏背景
+
+        /// <summary>
+        /// 全局背景显示开关
+        /// </summary>
+        public bool GlobalBackgroundActive
+        {
+            get => _globalBackground.gameObject.activeSelf;
+            set => _globalBackground.gameObject.SetActive(value);
+        }
+
+        /// <summary>
+        /// 设置全局背景图片
+        /// </summary>
+        /// <param name="sprite"></param>
+        public void SetGlobalBackground(Sprite sprite)
+        {
+            if (!GlobalBackgroundActive) GlobalBackgroundActive = true;
+            _globalBackground.sprite = sprite;
+        }
+
+
+        #endregion
+        
+        #region 屏幕适配
+
+        
+        /// <summary>
+        /// 应用安全区数据
+        /// </summary>
+        /// <param name="r"></param>
+        private void ApplySafeArea(Rect r)
+        {
+            Vector2 anchorMin = r.position;
+            Vector2 anchorMax = r.position + r.size;
+            anchorMin.x /= Screen.width;
+            anchorMin.y /= Screen.height;
+            anchorMax.x /= Screen.width;
+            anchorMax.y /= Screen.height;
+            
+            // 应用于根容器
+            if (_root != null)
+            {
+                _root.anchorMin = anchorMin;
+                _root.anchorMax = anchorMax;
+            }
+        }
+
+
+
+        #endregion
+        
         #region 工具接口
 
         public RectTransform CreateChildTrans(string childPath, Transform parent = null)
