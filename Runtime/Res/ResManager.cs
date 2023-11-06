@@ -310,11 +310,17 @@ namespace GameBox
                 {
                     Debug.Log($">>> Load Bundle from Cache: {url}");
                 }
-                
+/*                
 #if UNITY_EDITOR || UNITY_IOS
-                    url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
+                url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
 #endif
-                
+*/              
+                // 判断文件路径前缀
+                if (!url.StartsWith("jar://") || !url.StartsWith("file://"))
+                {
+                    url = $"file://{url}"; //需要添加 file 前缀路径
+                }
+
                 list.Add(ResLoadBundleRequest.Build(name, url, autoCache));
             }
 
