@@ -153,8 +153,9 @@ namespace GameBox
         /// <param name="bundleNames"></param>
         /// <param name="onComplete"></param>
         /// <param name="onProgress"></param>
-        public void PreloadEmbedBundles(IList<string> bundleNames, Action onComplete, Action<float> onProgress = null)
-            => LoadBundlesInternal(bundleNames, onComplete, onProgress);
+        /// <param name="autoCache"></param>
+        public void PreloadEmbedBundles(IList<string> bundleNames, Action onComplete, Action<float> onProgress = null, bool autoCache = true)
+            => LoadBundlesInternal(bundleNames, onComplete, onProgress, autoCache);
 
         #endregion
         
@@ -195,7 +196,6 @@ namespace GameBox
         /// </summary>
         private void LoadNextBundle()
         {
-
             _bundleLoadCount = _loadBundleQuests.Count; // 更新加载计数器
             if (_bundleLoadIdx >= _bundleLoadCount)
             {
@@ -211,6 +211,7 @@ namespace GameBox
             
             string bundleName = _loadBundleQuests[_bundleLoadIdx].name;
             string url = _loadBundleQuests[_bundleLoadIdx].url;
+            bool autoCache = _loadBundleQuests[_bundleLoadIdx].autoCache;
             LoadBundleAsync(url, (bundle, s) =>
             {
                 if (bundle != null)
@@ -238,7 +239,7 @@ namespace GameBox
                     }
                 }
                 LoadNextBundle();
-            });
+            }, autoCache);
         }
 
 
@@ -282,42 +283,14 @@ namespace GameBox
             LoadBundlesAsync(list, onComplete, onProgress);
         }
 
-        
-        /// <summary>
-        /// 从本地缓存中加载Bundles
-        /// </summary>
-        /// <param name="names"></param>
-        /// <param name="onComplete"></param>
-        /// <param name="onProgress"></param>
-        public void LoadBundlesFromCache(IList<string> names, Action onComplete, Action<float> onProgress = null)
-        {
-            List<ResLoadBundleRequest> list = new List<ResLoadBundleRequest>(names.Count);
-            
-            string name = "";
-            string url = "";
-            for (int i = 0; i < names.Count; i++)
-            {
-                name = names[i];
-                url = BundleCachingPath(name);
-#if UNITY_EDITOR || UNITY_IOS
-                url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
-#endif
-                list.Add(ResLoadBundleRequest.Build(name, url));
-            }
-
-            if (list.Count == 0) return;
-
-            // 调用接口
-            LoadBundlesAsync(list, onComplete, onProgress);
-        }
-
         /// <summary>
         /// 从App内部加载Bundles
         /// </summary>
         /// <param name="names"></param>
         /// <param name="onComplete"></param>
         /// <param name="onProgress"></param>
-        public void LoadBundlesInternal(IList<string> names, Action onComplete, Action<float> onProgress = null)
+        /// <param name="autoCache"></param>
+        public void LoadBundlesInternal(IList<string> names, Action onComplete, Action<float> onProgress = null, bool autoCache = true)
         {
             List<ResLoadBundleRequest> list = new List<ResLoadBundleRequest>(names.Count);
             
@@ -342,7 +315,7 @@ namespace GameBox
                     url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
 #endif
                 
-                list.Add(ResLoadBundleRequest.Build(name, url));
+                list.Add(ResLoadBundleRequest.Build(name, url, autoCache));
             }
 
             if (list.Count == 0) return;
