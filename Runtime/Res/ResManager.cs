@@ -299,7 +299,7 @@ namespace GameBox
             for (int i = 0; i < names.Count; i++)
             {
                 name = names[i];
-                
+                bool fixPath  =false;
                 url = BundleCachingPath(name);
                 if (!File.Exists(url))
                 {
@@ -308,19 +308,22 @@ namespace GameBox
                 }
                 else
                 {
+                    fixPath = true;
                     Debug.Log($">>> Load Bundle from Cache: {url}");
                 }
-/*                
+             
 #if UNITY_EDITOR || UNITY_IOS
-                url = $"file://{url}"; // iOS 和 Editor 需要添加 file 前缀路径
+                fixPath = true;
 #endif
-*/              
-                // 判断文件路径前缀
-                if (!url.StartsWith("jar://") || !url.StartsWith("file://"))
+                if (fixPath)
                 {
-                    url = $"file://{url}"; //需要添加 file 前缀路径
+                    // 判断文件路径前缀
+                    if (!url.StartsWith("jar://") || !url.StartsWith("file://"))
+                    {
+                        url = $"file://{url}"; //需要添加 file 前缀路径
+                    }
                 }
-
+                
                 list.Add(ResLoadBundleRequest.Build(name, url, autoCache));
             }
 
