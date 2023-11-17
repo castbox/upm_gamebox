@@ -66,7 +66,6 @@ namespace GameBox
         
         #region 资源缓存
 
-
         /// <summary>
         /// 已缓存的Bundle数据
         /// </summary>
@@ -82,12 +81,13 @@ namespace GameBox
 
         #endregion
 
-
         #region 初始化
 
         protected override void Init()
         {
+            Debug.Log("[ResManager]Init");
             _loader = new ResLoaderBase();
+            BetterStreamingAssets.Initialize();
         }
 
         /// <summary>
@@ -386,19 +386,14 @@ namespace GameBox
         
 
         #region 资源管理
-
-
         public AssetBundle GetBundle(string bundleName)
         {
-            AssetBundle ab = null;
-            if (Bundles.TryGetValue(bundleName, out ab))
+            if (!Bundles.TryGetValue(bundleName, out AssetBundle ab))
             {
-                Debug.Log($"Get cached bundle: {bundleName} : {ab}");   
+                ab = _loader.LoadBundle(bundleName);
+                if (null != ab) Bundles[bundleName] = ab;
             }
-            else
-            {
-                Debug.Log($"Bundle: {bundleName} not in cache...");
-            }
+            
             return ab;
         }
 
