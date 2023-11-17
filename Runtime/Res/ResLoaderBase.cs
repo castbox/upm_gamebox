@@ -18,8 +18,6 @@ namespace GameBox
             get => _showLog;
             set => _showLog = value;
         }
-        
-
 
         private string _bundleSecret = ""; // 加密秘钥
 
@@ -74,9 +72,33 @@ namespace GameBox
         /// <returns></returns>
         protected virtual AssetBundle LoadStreamingBundle(string bundleName, string secret = "")
         {
-            string filePath = ResManager.BundleStreamingPath(bundleName);
-            LogD($"Load streaming bundles: {filePath}");
-            return TryLoadBundleFromPath(filePath, secret);
+            AssetBundle ab = null;
+            byte[] data = null;
+            var bundle_path = $"{ResManager.BundleDirPath.ToLower()}/{bundleName}";
+            
+#if UNITY_EDITOR
+            bundle_path = $"{Application.streamingAssetsPath}/{bundle_path}"; //需要添加 file 前缀路径
+            if (File.Exists(bundle_path))
+            {
+                data = File.ReadAllBytes(bundle_path);
+            }
+#else
+            try
+            {
+                data = BetterStreamingAssets.ReadAllBytes(bundle_path);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[ResLoaderBase]LoadStreamingBundle: error: {e}");
+            }
+#endif
+            
+            if (data != null)
+            {
+                ab = Encrypter.DecryptBundle(data, secret);
+            }
+
+            return ab;
         }
 
         /// <summary>
@@ -105,7 +127,6 @@ namespace GameBox
             if (null == ab) ab = LoadStreamingBundle(bundleName, _bundleSecret); // 再加载包内缓存的Bundle
             return ab;
         }
-
 
         /// <summary>
         /// 尝试加载Bundle;
