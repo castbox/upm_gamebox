@@ -75,27 +75,42 @@ namespace GameBox
             AssetBundle ab = null;
             byte[] data = null;
             var bundle_path = $"{ResManager.BundleDirPath.ToLower()}/{bundleName}";
-            
+
+            if (string.IsNullOrEmpty(_bundleSecret))
+            {
 #if UNITY_EDITOR
-            bundle_path = $"{Application.streamingAssetsPath}/{bundle_path}"; //需要添加 file 前缀路径
-            if (File.Exists(bundle_path))
-            {
-                data = File.ReadAllBytes(bundle_path);
-            }
+                bundle_path = $"{Application.streamingAssetsPath}/{bundle_path}"; //需要添加 file 前缀路径
+                if (File.Exists(bundle_path))
+                {
+                    ab = AssetBundle.LoadFromFile(bundle_path);
+                }
 #else
-            try
-            {
-                data = BetterStreamingAssets.ReadAllBytes(bundle_path);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[ResLoaderBase]LoadStreamingBundle: error: {e}");
-            }
+                ab = BetterStreamingAssets.LoadAssetBundle(bundle_path);
 #endif
-            
-            if (data != null)
+            }
+            else
             {
-                ab = Encrypter.DecryptBundle(data, secret);
+#if UNITY_EDITOR
+                bundle_path = $"{Application.streamingAssetsPath}/{bundle_path}"; //需要添加 file 前缀路径
+                if (File.Exists(bundle_path))
+                {
+                    data = File.ReadAllBytes(bundle_path);
+                }
+#else
+                try
+                {
+                    data = BetterStreamingAssets.ReadAllBytes(bundle_path);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[ResLoaderBase]LoadStreamingBundle: error: {e}");
+                }
+#endif
+
+                if (data != null)
+                {
+                    ab = Encrypter.DecryptBundle(data, secret);
+                }
             }
 
             return ab;
